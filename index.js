@@ -88,5 +88,5 @@ app.get('/UploadForm.html', (req, res) => {
 
 
 app.listen(port, host, () => {
-    console.log(`Сервер працює на http://${host}:${port}/UploadForm.html`);  // Виводимо повідомлення про запуск сервера
+    console.log(`Сервер працює на http://localhost:${port}/UploadForm.html`);  // Виводимо повідомлення про запуск сервера
 });
