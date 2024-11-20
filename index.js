@@ -3,6 +3,9 @@ const fs = require('fs');                                                  //д�
 const path = require('path');                                              //для роботи з шляхами
 const express = require('express');                                        //для створення сервера
 const multer = require('multer');                                          //для обробки multipart/form-data
+const swaggerUi = require('swagger-ui-express');    
+const swaggerJsDoc = require('swagger-jsdoc');
+
 
 // Налаштовуємо параметри командного рядка для хосту, порту та папки кешу
 prog
@@ -19,6 +22,23 @@ const app = express();
 app.use(express.json());  //Для обробки JSON запитів
 app.use(express.urlencoded({ extended: true }));  //Для обробки URL-encoded запитів
 
+
+const swaggerop = {
+    definition: {
+        openapi: '3.0.0',  
+        info: {
+            title: 'put the max mark',
+            version: '1.0.0',
+        },
+    },
+    apis: ['./index.js'] // Файли з документацією
+};
+
+const sweg = swaggerJsDoc(swaggerop);
+
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(sweg));
+
+
 //Налаштовуємо multer для обробки тільки текстових полів
 const upload = multer();  //Не використовуємо файли, тільки текстові поля
 
@@ -28,6 +48,25 @@ function getNotePath(name) {
 }
 
 //Обробка GET-запиту для отримання нотатки
+/**
+ * @openapi
+ * /notes/{name}:
+ *   get:
+ *     summary: Отримати текст нотатки за її назвою.
+ *     parameters:
+ *       - name: name
+ *         in: path
+ *         description: Назва нотатки.
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Текст нотатки успішно отриманий.
+ *       404:
+ *         description: Нотатку не знайдено.
+ */
+
 app.get('/notes/:name', (req, res) => {
     const filePath = getNotePath(req.params.name);  //формуємо шлях до файлу
     if (!fs.existsSync(filePath)) return res.status(404).send('Не знайдено');  //перевіряємо наявність файлу
@@ -36,6 +75,33 @@ app.get('/notes/:name', (req, res) => {
 });
 
 //обробка PUT-запиту для оновлення нотатки
+/**
+ * @openapi
+ * /notes/{name}:
+ *   put:
+ *     summary: Оновити текст існуючої нотатки.
+ *     parameters:
+ *       - name: name
+ *         in: path
+ *         description: Назва нотатки.
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       description: Новий текст нотатки.
+ *       required: true
+ *       content:
+ *         text/plain:
+ *           schema:
+ *             type: string
+ *     responses:
+ *       200:
+ *         description: Нотатка успішно оновлена.
+ *       404:
+ *         description: Нотатку не знайдено.
+ *       400:
+ *         description: Відсутній текст нотатки.
+ */
 app.use(express.text());
 app.put('/notes/:name', (req, res) => {
     const filePath = getNotePath(req.params.name);                              //Формуємо шлях до файлу
@@ -47,6 +113,24 @@ app.put('/notes/:name', (req, res) => {
 });
 
 //обробка DELETE-запиту для видалення нотатки
+/**
+ * @openapi
+ * /notes/{name}:
+ *   delete:
+ *     summary: Видалити нотатку за її назвою.
+ *     parameters:
+ *       - name: name
+ *         in: path
+ *         description: Назва нотатки.
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Нотатка успішно видалена.
+ *       404:
+ *         description: Нотатку не знайдено.
+ */
 app.delete('/notes/:name', (req, res) => {
     const filePath = getNotePath(req.params.name);  // Формуємо шлях до файлу
     if (!fs.existsSync(filePath)) return res.status(404).send('Не знайдено');  // Перевіряємо наявність файлу
@@ -55,6 +139,26 @@ app.delete('/notes/:name', (req, res) => {
 });
 
 //обробка GET-запиту для отримання списку всіх нотаток
+/**
+ * @openapi
+ * /notes:
+ *   get:
+ *     summary: Отримати список усіх нотаток.
+ *     responses:
+ *       200:
+ *         description: Список нотаток успішно отриманий.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   text:
+ *                     type: string
+ */
 app.get('/notes', (req, res) => {
     const notes = fs.readdirSync(cache).map(file => {  // Читаємо всі файли в папці кешу
         const name = path.parse(file).name;                             // Отримуємо ім'я файлу без розширення
@@ -65,6 +169,29 @@ app.get('/notes', (req, res) => {
 });
 
 //обробка POST-запиту для створення нової нотатки
+/**
+ * @openapi
+ * /write:
+ *   post:
+ *     summary: Створити нову нотатку.
+ *     requestBody:
+ *       description: Назва та текст нової нотатки.
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               note_name:
+ *                 type: string
+ *               note:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Нотатка успішно створена.
+ *       400:
+ *         description: Нотатка вже існує або відсутня назва/текст.
+ */ 
 app.post('/write', upload.none(), (req, res) => {  //Використовуємо multer для обробки текстових полів
     const noteName = req.body.note_name;    //Отримуємо назву нотатки з тіла запиту
     const noteText = req.body.note;         //Отримуємо текст нотатки з тіла запиту
@@ -82,6 +209,17 @@ app.post('/write', upload.none(), (req, res) => {  //Використовуєм�
 });
 
 //підгрузка HTML-форми для створення нотатки
+/**
+ * @openapi
+ * /UploadForm.html:
+ *   get:
+ *     description: Відповідає за одержання форми для додавання нової нотатки.
+ *     responses:
+ *       200:
+ *         description: Форма з нотатками була успішно одержана.
+ *       500:
+ *         description: Форма з нотатками загубилась у часі та просторі.
+ */
 app.get('/UploadForm.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'UploadForm.html'));  // Відправляємо HTML форму
 });
